@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wallet QA Validator | iGaming Ledger Integrity System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Global Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-badge">FINTECH / QA LAB</span>
+        <h1 class="brand-title">WALLET LEDGER VALIDATOR</h1>
+        <span class="system-environment">ENV: LOCAL_SQLITE_AUDIT</span>
+      </div>
+      <div class="header-actions">
+        <button id="run-audit-btn" class="btn btn-secondary" title="Execute automated SQL integrity audit">
+          <span class="btn-icon">⚡</span> Run SQL Audit
+          <span id="audit-badge" class="badge badge-warning" style="display: none;">3</span>
+        </button>
+        <button id="reset-db-btn" class="btn btn-ghost" title="Reset database to seed baseline">
+          ↺ Reset DB
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace: Asymmetric 2-Column Grid -->
+    <main class="app-workspace">
+      <!-- Left Rail (340px): Controls, Account Info & Transaction Execution -->
+      <aside class="left-rail">
+        
+        <!-- Account Switcher Section -->
+        <section class="panel-section">
+          <div class="section-header">
+            <span class="section-label">ACTIVE ACCOUNT</span>
+            <span id="user-count" class="mono-badge">4 USERS</span>
+          </div>
+          <div class="form-group">
+            <label for="account-select" class="field-label">SELECT USER ACCOUNT</label>
+            <div class="select-wrapper">
+              <select id="account-select" class="form-control mono-select">
+                <option value="" disabled selected>Loading accounts...</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Account Monospace Balance Display -->
+          <div class="balance-card">
+            <div class="balance-meta">
+              <span class="balance-title">CACHED LEDGER BALANCE</span>
+              <span id="balance-status-tag" class="status-indicator status-normal">NORMAL</span>
+            </div>
+            <div class="balance-display">
+              <span class="currency-symbol">$</span>
+              <span id="balance-amount" class="balance-number">0.00</span>
+            </div>
+            <div class="balance-footer">
+              <span class="footer-label">ACCOUNT ID:</span>
+              <span id="account-id-display" class="footer-value">#--</span>
+              <span class="footer-separator">|</span>
+              <span class="footer-label">DB USERNAME:</span>
+              <span id="account-username-display" class="footer-value">---</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Transaction Execution Form -->
+        <section class="panel-section">
+          <div class="section-header">
+            <span class="section-label">EXECUTE TRANSACTION</span>
+            <span class="mono-badge">REST API</span>
+          </div>
+
+          <form id="transaction-form" novalidate>
+            <!-- Transaction Type -->
+            <div class="form-group">
+              <label for="txn-type" class="field-label">TRANSACTION TYPE</label>
+              <select id="txn-type" class="form-control mono-select">
+                <option value="deposit">deposit (+ Credit)</option>
+                <option value="withdraw">withdraw (- Debit)</option>
+                <option value="bet">bet (- Wager Debit)</option>
+                <option value="win">win (+ Payout Credit)</option>
+              </select>
+            </div>
+
+            <!-- Amount Input -->
+            <div class="form-group">
+              <label for="txn-amount" class="field-label">AMOUNT (USD)</label>
+              <div class="input-prefix-wrapper">
+                <span class="input-prefix">$</span>
+                <input
+                  type="number"
+                  id="txn-amount"
+                  class="form-control mono-input"
+                  placeholder="0.00"
+                  step="0.01"
+                  required
+                />
+              </div>
+            </div>
+
+            <!-- Reference ID Input -->
+            <div class="form-group">
+              <div class="label-with-action">
+                <label for="txn-reference" class="field-label">REFERENCE ID</label>
+                <button type="button" id="generate-ref-btn" class="text-action-btn">
+                  Generate Unique
+                </button>
+              </div>
+              <input
+                type="text"
+                id="txn-reference"
+                class="form-control mono-input"
+                placeholder="TXN-E2E-2024-XXXX"
+                required
+              />
+            </div>
+
+            <!-- Inline Validation / Response Notification Banner -->
+            <div id="form-alert" class="alert-box" style="display: none;" role="alert">
+              <span id="alert-icon" class="alert-icon">!</span>
+              <span id="alert-message" class="alert-text"></span>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-actions">
+              <button type="submit" id="submit-txn-btn" class="btn btn-primary btn-block">
+                POST /api/transaction
+              </button>
+            </div>
+          </form>
+        </section>
+
+      </aside>
+
+      <!-- Right Main Area: Transaction Ledger & Audit Output -->
+      <section class="main-content">
+        
+        <!-- Ledger Header & Filter Controls -->
+        <div class="ledger-header">
+          <div class="ledger-title-group">
+            <h2 class="ledger-title">TRANSACTION AUDIT LEDGER</h2>
+            <span id="ledger-total-count" class="mono-badge">0 TRANSACTIONS</span>
+          </div>
+
+          <div class="ledger-controls">
+            <!-- Type Filters -->
+            <div class="filter-group" role="group" aria-label="Transaction Type Filters">
+              <button type="button" class="filter-chip active" data-type="all">All</button>
+              <button type="button" class="filter-chip" data-type="deposit">Deposit</button>
+              <button type="button" class="filter-chip" data-type="withdraw">Withdraw</button>
+              <button type="button" class="filter-chip" data-type="bet">Bet</button>
+              <button type="button" class="filter-chip" data-type="win">Win</button>
+            </div>
+            
+            <!-- User Filter Toggle -->
+            <label class="checkbox-label" for="filter-current-user-only">
+              <input type="checkbox" id="filter-current-user-only" checked />
+              <span class="checkbox-text">Filter Selected User</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Ledger Table Container -->
+        <div class="table-container">
+          <table class="ledger-table" id="transactions-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">TX ID</th>
+                <th style="width: 130px;">ACCOUNT</th>
+                <th style="width: 100px;">TYPE</th>
+                <th>REFERENCE ID</th>
+                <th style="width: 150px; text-align: right;">AMOUNT (USD)</th>
+                <th style="width: 100px; text-align: center;">STATUS</th>
+                <th style="width: 160px; text-align: right;">TIMESTAMP (UTC)</th>
+              </tr>
+            </thead>
+            <tbody id="transactions-tbody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+
+          <!-- Empty State -->
+          <div id="table-empty-state" class="table-state-box" style="display: none;">
+            <div class="state-icon">∅</div>
+            <div class="state-title">No transactions match current filters</div>
+            <div class="state-subtitle">Adjust filter parameters or execute a new test transaction on the left panel.</div>
+          </div>
+
+          <!-- Loading State -->
+          <div id="table-loading-state" class="table-state-box" style="display: none;">
+            <div class="spinner"></div>
+            <div class="state-title">Querying ledger records...</div>
+          </div>
+        </div>
+
+        <!-- SQL Data Integrity Audit Modal / Drawer -->
+        <div id="audit-modal" class="modal-backdrop" style="display: none;">
+          <div class="modal-surface">
+            <div class="modal-header">
+              <div class="modal-title-group">
+                <span class="brand-badge">SQL INTEGRITY INSPECTOR</span>
+                <h3 class="modal-title">Database Audit Report (Live Query Results)</h3>
+              </div>
+              <button id="close-audit-modal-btn" class="close-btn" aria-label="Close modal">✕</button>
+            </div>
+            <div class="modal-body" id="audit-modal-content">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
